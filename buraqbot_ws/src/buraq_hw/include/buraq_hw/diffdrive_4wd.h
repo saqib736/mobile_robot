@@ -48,7 +48,10 @@ class DiffDriveBuraq : public hardware_interface::SystemInterface {
   const std::string kSerialDeviceParam{"serial_device"};
   const std::string kBaudRateParam{"baud_rate"};
   const std::string kTimeoutParam{"timeout"};
-  const std::string kEncTicksPerRevParam{"enc_ticks_per_rev"};
+  const std::string kFrontLeftEncTicksPerRevParam{"front_left_enc_counts_per_rev"};
+  const std::string kFrontRightEncTicksPerRevParam{"front_right_enc_counts_per_rev"};
+  const std::string kRearLeftEncTicksPerRevParam{"rear_left_enc_counts_per_rev"};
+  const std::string kRearRightEncTicksPerRevParam{"rear_right_enc_counts_per_rev"};
   const std::string kLoopRateParam{"loop_rate"};
   const std::string kPidPParam{"pid_p"};
   const std::string kPidIParam{"pid_i"};
@@ -63,17 +66,20 @@ class DiffDriveBuraq : public hardware_interface::SystemInterface {
     std::string rear_left_wheel_name = "";
     std::string rear_right_wheel_name = "";
     // Encoder parameters.
-    int enc_ticks_per_rev = 0;
+    int front_left_enc_counts_per_rev = 0;
+    int front_right_enc_counts_per_rev = 0;
+    int rear_left_enc_counts_per_rev = 0;
+    int rear_right_enc_counts_per_rev = 0;
     // Communication parameters.
     std::string serial_device = "";
     int baud_rate = 0;
     int timeout = 0;
     float loop_rate = 0.0;
     // pid parameters
-    int pid_p = 0;
-    int pid_d = 0;
-    int pid_i = 0;
-    int pid_o = 0;
+    float pid_p = 0.0;
+    float pid_d = 0.0;
+    float pid_i = 0.0;
+    float pid_o = 0.0;
   };
 
   // Configuration parameters.

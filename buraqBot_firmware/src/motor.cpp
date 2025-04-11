@@ -4,8 +4,12 @@
  */
 
 #include "motor.h"
+#include "encoder.h"
 
-MotorController::MotorController() {
+MotorController::MotorController(EncoderManager* encManager) {
+    // Store encoder manager reference
+    encoderManager = encManager;
+    
     // Initialize arrays
     for (int i = 0; i < NUM_MOTORS; i++) {
         targetSpeeds[i] = 0;
@@ -68,15 +72,15 @@ void MotorController::init() {
                                    pidKp, pidKi, pidKd, DIRECT);
         pidControllers[i]->SetMode(AUTOMATIC);
         pidControllers[i]->SetSampleTime(PID_SAMPLE_TIME);
-        pidControllers[i]->SetOutputLimits(-255, 255); // PWM range
+        pidControllers[i]->SetOutputLimits(-1023, 1023); // PWM range for 10-bit resolution
     }
 }
 
 void MotorController::setOpenLoopSpeed(uint8_t motorIndex, double speed) {
     if (motorIndex >= NUM_MOTORS) return;
     
-    // Constrain speed to valid PWM range
-    speed = constrain(speed, -255, 255);
+    // Constrain speed to valid PWM range (10-bit resolution)
+    speed = constrain(speed, -1023, 1023);
     
     // Set mode and target
     closedLoopMode[motorIndex] = false;
@@ -97,6 +101,17 @@ void MotorController::setClosedLoopSpeed(uint8_t motorIndex, double targetSpeed)
     // Set mode and target
     closedLoopMode[motorIndex] = true;
     targetSpeeds[motorIndex] = targetSpeed;
+    
+    // Print debug info about the target speed and encoder ticks
+    if (encoderManager != nullptr) {
+        uint16_t tpr = encoderManager->getTicksPerRev(motorIndex);
+        Serial.print("Motor ");
+        Serial.print(motorIndex);
+        Serial.print(": Target Speed = ");
+        Serial.print(targetSpeed);
+        Serial.print(" ticks/s, TPR = ");
+        Serial.println(tpr);
+    }
 }
 
 void MotorController::setAllOpenLoop(double speeds[NUM_MOTORS]) {
@@ -123,7 +138,7 @@ void MotorController::update(float currentEncoderSpeeds[NUM_MOTORS]) {
             
             // Apply PID output to motor
             int pwmValue = abs(outputPwm[i] * pidKo); // Apply output coefficient
-            pwmValue = constrain(pwmValue, 0, 255);
+            pwmValue = constrain(pwmValue, 0, 1023); // 10-bit PWM resolution
             bool forward = (outputPwm[i] >= 0);
             
             analogWrite(pwmPins[i], pwmValue);

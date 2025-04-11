@@ -31,9 +31,16 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   digitalWrite(ledPin, HIGH); // Turn on during initialization
   
+  // Set PWM frequency and resolution
+  analogWriteFrequency(MOTOR_FL_PWM, PWM_FREQUENCY);
+  analogWriteFrequency(MOTOR_FR_PWM, PWM_FREQUENCY);
+  analogWriteFrequency(MOTOR_RL_PWM, PWM_FREQUENCY);
+  analogWriteFrequency(MOTOR_RR_PWM, PWM_FREQUENCY);
+  analogWriteResolution(PWM_RESOLUTION); // Set to 10-bit resolution (0-1023)
+  
   // Initialize modules
   encoderManager = new EncoderManager();
-  motorController = new MotorController();
+  motorController = new MotorController(encoderManager); // Pass encoder manager to motor controller
   imu = new IMU();
   communication = new Communication();
   

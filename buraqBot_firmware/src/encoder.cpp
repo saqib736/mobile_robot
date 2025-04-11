@@ -13,6 +13,13 @@ EncoderManager::EncoderManager() {
         prevEncoderCounts[i] = 0;
         speeds[i] = 0.0;
     }
+    
+    // Initialize ticks per revolution for each motor
+    ticksPerRev[0] = ENCODER_FL_TICKS_PER_REV;
+    ticksPerRev[1] = ENCODER_FR_TICKS_PER_REV;
+    ticksPerRev[2] = ENCODER_RL_TICKS_PER_REV;
+    ticksPerRev[3] = ENCODER_RR_TICKS_PER_REV;
+    
     lastSpeedUpdateTime = 0;
 }
 
@@ -86,6 +93,13 @@ float EncoderManager::getSpeed(uint8_t motorIndex) {
         return speeds[motorIndex];
     }
     return 0.0;
+}
+
+uint16_t EncoderManager::getTicksPerRev(uint8_t motorIndex) {
+    if (motorIndex < NUM_MOTORS) {
+        return ticksPerRev[motorIndex];
+    }
+    return 0;
 }
 
 String EncoderManager::getFormattedCounts() {

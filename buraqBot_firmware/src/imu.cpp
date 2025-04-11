@@ -12,7 +12,13 @@ bool IMU::init() {
     Wire.setSDA(IMU_SDA);
     
     mpu.begin();
+    
+    // Perform a more thorough calibration
+    Serial.println("Calibrating gyroscope... Keep the robot still!");
     mpu.calcGyroOffsets(true); // Calibrate gyroscope with output enabled
+    
+    // Set gyro and accel sensitivity
+    // MPU6050_tockn doesn't expose these directly, but they affect the internal calculations
     
     // Initialize quaternion to identity [w=1, x=0, y=0, z=0]
     quat[0] = 1.0f;
@@ -20,11 +26,27 @@ bool IMU::init() {
     quat[2] = 0.0f;
     quat[3] = 0.0f;
     
+    // Initialize angles
+    angleX = 0.0f;
+    angleY = 0.0f;
+    angleZ = 0.0f;
+    
     lastUpdateTime = millis();
     return true;
 }
 
 void IMU::update() {
+    // Calculate delta time for integration
+    unsigned long currentTime = millis();
+    float dt = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
+    lastUpdateTime = currentTime;
+    
+    // Skip first update or if dt is too large (indicates a long delay)
+    if (dt > 0.5f) {
+        dt = 0.01f; // Use a reasonable default
+    }
+    
+    // Update raw sensor readings
     mpu.update();
     
     // Get acceleration values (in m/s²)
@@ -37,10 +59,18 @@ void IMU::update() {
     gyroY = mpu.getGyroY() * DEG_TO_RAD;
     gyroZ = mpu.getGyroZ() * DEG_TO_RAD;
     
-    // Get calculated angles in degrees
-    angleX = mpu.getAngleX();
-    angleY = mpu.getAngleY();
-    angleZ = mpu.getAngleZ();
+    // Get calculated angles from the MPU6050_tockn library
+    // These use a complementary filter internally
+    float newAngleX = mpu.getAngleX();
+    float newAngleY = mpu.getAngleY();
+    float newAngleZ = mpu.getAngleZ();
+    
+    // Apply a low-pass filter to reduce noise in the angle readings
+    // Alpha determines how much weight to give to the new reading (0.1 = 10% new, 90% old)
+    float alpha = 0.2f;
+    angleX = angleX * (1.0f - alpha) + newAngleX * alpha;
+    angleY = angleY * (1.0f - alpha) + newAngleY * alpha;
+    angleZ = angleZ * (1.0f - alpha) + newAngleZ * alpha;
     
     // Convert Euler angles to quaternion
     // Convert degrees to radians for quaternion calculation

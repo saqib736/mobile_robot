@@ -26,32 +26,38 @@ hardware_interface::CallbackReturn DiffDriveBuraq::on_init(
   config_.serial_device = info_.hardware_parameters[kSerialDeviceParam];
   config_.baud_rate = std::stoi(info_.hardware_parameters[kBaudRateParam]);
   config_.timeout = std::stoi(info_.hardware_parameters[kTimeoutParam]);
-  config_.enc_ticks_per_rev = std::stoi(info_.hardware_parameters[kEncTicksPerRevParam]);
+  config_.front_left_enc_counts_per_rev = std::stoi(info_.hardware_parameters[kFrontLeftEncTicksPerRevParam]);
+  config_.front_right_enc_counts_per_rev = std::stoi(info_.hardware_parameters[kFrontRightEncTicksPerRevParam]);
+  config_.rear_left_enc_counts_per_rev = std::stoi(info_.hardware_parameters[kRearLeftEncTicksPerRevParam]);
+  config_.rear_right_enc_counts_per_rev = std::stoi(info_.hardware_parameters[kRearRightEncTicksPerRevParam]);
   config_.loop_rate = std::stof(info_.hardware_parameters[kLoopRateParam]);
-  config_.pid_p = std::stoi(info_.hardware_parameters[kPidPParam]);
-  config_.pid_d = std::stoi(info_.hardware_parameters[kPidDParam]);
-  config_.pid_i = std::stoi(info_.hardware_parameters[kPidIParam]);
-  config_.pid_o = std::stoi(info_.hardware_parameters[kPidOParam]);
+  config_.pid_p = std::stof(info_.hardware_parameters[kPidPParam]);
+  config_.pid_d = std::stof(info_.hardware_parameters[kPidDParam]);
+  config_.pid_i = std::stof(info_.hardware_parameters[kPidIParam]);
+  config_.pid_o = std::stof(info_.hardware_parameters[kPidOParam]);
 
   // Set up the wheels
-  front_left_wheel_.Setup(config_.front_left_wheel_name, config_.enc_ticks_per_rev);
-  front_right_wheel_.Setup(config_.front_right_wheel_name, config_.enc_ticks_per_rev);
-  rear_left_wheel_.Setup(config_.rear_left_wheel_name, config_.enc_ticks_per_rev);
-  rear_right_wheel_.Setup(config_.rear_right_wheel_name, config_.enc_ticks_per_rev);
-
+  front_left_wheel_.Setup(config_.front_left_wheel_name, config_.front_left_enc_counts_per_rev);
+  front_right_wheel_.Setup(config_.front_right_wheel_name, config_.front_right_enc_counts_per_rev);
+  rear_left_wheel_.Setup(config_.rear_left_wheel_name, config_.rear_left_enc_counts_per_rev);
+  rear_right_wheel_.Setup(config_.rear_right_wheel_name, config_.rear_right_enc_counts_per_rev);
+  
   RCLCPP_INFO(
       logger_,
       "DiffDriveBuraq hardware interface initialized with:"
       " front_left_wheel: %s, front_right_wheel: %s"
       " rear_left_wheel: %s, rear_right_wheel: %s"
       " serial_device: %s, baud_rate: %d, timeout: %d"
-      " enc_ticks_per_rev: %d"
+      " front_left_enc_counts_per_rev: %d, front_right_enc_counts_per_rev: %d"
+      " rear_left_enc_counts_per_rev: %d, rear_right_enc_counts_per_rev: %d"
       " loop_rate: %f, pid_p: %d, pid_i: %d, pid_d: %d, pid_o: %d",
       config_.front_left_wheel_name.c_str(), config_.front_right_wheel_name.c_str(),
       config_.rear_left_wheel_name.c_str(), config_.rear_right_wheel_name.c_str(),
       config_.serial_device.c_str(), config_.baud_rate, config_.timeout,
-      config_.enc_ticks_per_rev);
-
+      config_.front_left_enc_counts_per_rev, config_.front_right_enc_counts_per_rev,
+      config_.rear_left_enc_counts_per_rev, config_.rear_right_enc_counts_per_rev,
+      config_.loop_rate, config_.pid_p, config_.pid_i, config_.pid_d, config_.pid_o);
+  
   return hardware_interface::CallbackReturn::SUCCESS;
 }
 

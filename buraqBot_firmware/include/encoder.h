@@ -7,8 +7,10 @@
 #define ENCODER_H
 
 #include <Arduino.h>
-#include <Encoder.h> // Using the Encoder library for reliable quadrature encoder reading
 #include "config.h"
+
+// Include the Encoder library
+#include "../.pio/libdeps/teensy41/Encoder/Encoder.h"
 
 class EncoderManager {
 private:
@@ -17,6 +19,7 @@ private:
     long prevEncoderCounts[NUM_MOTORS]; // Previous encoder counts for speed calculation
     float speeds[NUM_MOTORS]; // Calculated speeds in ticks per second
     unsigned long lastSpeedUpdateTime; // Timestamp for speed calculation
+    uint16_t ticksPerRev[NUM_MOTORS]; // Ticks per revolution for each encoder
     
 public:
     /**
@@ -57,6 +60,13 @@ public:
      * @return Current speed in ticks per second
      */
     float getSpeed(uint8_t motorIndex);
+    
+    /**
+     * @brief Get the ticks per revolution for a specific motor
+     * @param motorIndex Motor index (0-3)
+     * @return Ticks per revolution for the specified motor
+     */
+    uint16_t getTicksPerRev(uint8_t motorIndex);
     
     /**
      * @brief Get formatted encoder data for serial communication

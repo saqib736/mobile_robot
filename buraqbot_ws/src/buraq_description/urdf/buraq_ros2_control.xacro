@@ -13,18 +13,22 @@
         <param name="rear_right_wheel_name">${prefix}rear_right_wheel_joint</param>
         
         <!-- Serial communication parameters -->
-        <param name="device">/dev/ttyACM0</param>
+        <param name="serial_device">/dev/ttyACM0</param>
         <param name="baud_rate">115200</param>
-        <param name="timeout_ms">1000</param>
+        <param name="timeout">1000</param>
         
         <!-- Hardware parameters -->
-        <param name="loop_rate">50</param>
-        <param name="enc_counts_per_rev">1440</param>  <!-- Adjust based on your encoder -->
+        <param name="loop_rate">30</param>
+        <param name="front_left_enc_counts_per_rev">2410</param>
+        <param name="front_right_enc_counts_per_rev">2452</param>
+        <param name="rear_left_enc_counts_per_rev">2369</param>
+        <param name="rear_right_enc_counts_per_rev">2327</param>
         
         <!-- PID parameters -->
-        <param name="pid_p">10.0</param>
-        <param name="pid_i">0.1</param>
-        <param name="pid_d">0.0</param>
+        <param name="pid_p">0.3</param>
+        <param name="pid_i">0.05</param>
+        <param name="pid_d">0.005</param>
+        <param name="pid_o">0.8</param>
       </hardware>
       
       <!-- Front Left Wheel -->

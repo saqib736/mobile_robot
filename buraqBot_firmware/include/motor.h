@@ -10,8 +10,14 @@
 #include <PID_v1.h> // Using the PID library for control
 #include "config.h"
 
+// Forward declaration
+class EncoderManager;
+
 class MotorController {
 private:
+    // Reference to the encoder manager
+    EncoderManager* encoderManager;
+    
     // Motor pins
     uint8_t pwmPins[NUM_MOTORS];
     uint8_t dir1Pins[NUM_MOTORS];
@@ -30,8 +36,9 @@ private:
 public:
     /**
      * @brief Constructor
+     * @param encManager Pointer to the EncoderManager instance
      */
-    MotorController();
+    MotorController(EncoderManager* encManager = nullptr);
     
     /**
      * @brief Destructor
