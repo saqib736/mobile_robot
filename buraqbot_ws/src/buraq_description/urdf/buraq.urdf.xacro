@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="buraq">
+
+  <!-- Include robot properties -->
+  <xacro:include filename="$(find buraq_description)/urdf/buraq_properties.xacro" />
+  
+  <!-- Include wheel macro -->
+  <xacro:include filename="$(find buraq_description)/urdf/wheel.xacro" />
+  
+  <!-- Include sensor macros -->
+  <xacro:include filename="$(find buraq_description)/urdf/sensors.xacro" />
+  
+  <!-- Include ros2_control configuration -->
+  <xacro:include filename="$(find buraq_description)/urdf/buraq_ros2_control.xacro" />
+  
+  <!-- Base Link -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="${base_length} ${base_width} ${base_height}" />
+      </geometry>
+      <material name="blue" />
+    </visual>
+    
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="${base_length} ${base_width} ${base_height}" />
+      </geometry>
+    </collision>
+    
+    <inertial>
+      <mass value="${base_mass}" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <inertia 
+        ixx="${base_mass * (base_width * base_width + base_height * base_height) / 12}"
+        iyy="${base_mass * (base_length * base_length + base_height * base_height) / 12}"
+        izz="${base_mass * (base_length * base_length + base_width * base_width) / 12}"
+        ixy="0.0" iyz="0.0" ixz="0.0" />
+    </inertial>
+  </link>
+  
+  <!-- Robot footprint link -->
+  <link name="base_footprint" />
+  
+  <joint name="base_joint" type="fixed">
+    <parent link="base_footprint" />
+    <child link="base_link" />
+    <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0" />
+  </joint>
+  
+  <!-- Wheels -->
+  <xacro:wheel name="front_left" x_offset="${wheel_offset_x}" y_offset="${wheel_offset_y}" z_offset="${wheel_offset_z}" flip="1" />
+  <xacro:wheel name="front_right" x_offset="${wheel_offset_x}" y_offset="${wheel_offset_y}" z_offset="${wheel_offset_z}" flip="-1" />
+  <xacro:wheel name="rear_left" x_offset="-${wheel_offset_x}" y_offset="${wheel_offset_y}" z_offset="${wheel_offset_z}" flip="1" />
+  <xacro:wheel name="rear_right" x_offset="-${wheel_offset_x}" y_offset="${wheel_offset_y}" z_offset="${wheel_offset_z}" flip="-1" />
+  
+  <!-- IMU -->
+  <xacro:imu_sensor name="imu" />
+  
+  <!-- LiDAR -->
+  <xacro:lidar_sensor name="lidar" />
+  
+  <!-- ROS2 Control -->
+  <xacro:buraq_ros2_control name="BuraqRobot" prefix="" />
+</robot>

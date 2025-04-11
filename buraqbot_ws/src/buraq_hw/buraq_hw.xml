@@ -1,0 +1,9 @@
+<library path="diffdrive_buraq">
+
+  <class name="buraq_hw/DiffDriveBuraq" type="buraq_hw::DiffDriveBuraq" base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Hardware interface implementation for the Buraq robot.
+    </description>
+  </class>
+
+</library>

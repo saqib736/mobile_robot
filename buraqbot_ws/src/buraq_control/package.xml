@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>buraq_control</name>
+  <version>0.1.0</version>
+  <description>
+    Control package for the Buraq 4WD mobile robot
+  </description>
+  <maintainer email="user@todo.todo">user</maintainer>
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>controller_manager</depend>
+  <depend>diff_drive_controller</depend>
+  <depend>joint_state_broadcaster</depend>
+  <depend>imu_sensor_broadcaster</depend>
+  <depend>robot_state_publisher</depend>
+  <depend>buraq_hw</depend>
+  <depend>buraq_description</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
