@@ -1,39 +1,38 @@
 import os
 
 from ament_index_python.packages import get_package_share_directory
-
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import PathJoinSubstitution
-from launch_ros.substitutions import FindPackageShare
+from launch_ros.actions import Node
+from launch.substitutions import LaunchConfiguration
 
+pkg_buraq_control = get_package_share_directory('buraq_bringup')
+pkg_buraq_description = get_package_share_directory('buraq_description')
 
 def generate_launch_description():
-    # Include the robot description launch file (visualization only)
-    description_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([
-            PathJoinSubstitution([
-                FindPackageShare('buraq_description'),
-                'launch',
-                'display.launch.py'
-            ])
-        ])
+
+    include_buraq_description = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_buraq_description, 'launch', 'description.launch.py'),
+        ),
+        launch_arguments={
+            'rsp': 'True',
+        }.items()
     )
-    
-    # Include the controller launch file
-    control_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([
-            PathJoinSubstitution([
-                FindPackageShare('buraq_control'),
-                'launch',
-                'buraq_control.launch.py'
-            ])
-        ])
+
+    include_buraq_control =  IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_buraq_control, 'launch', 'buraq_control.launch.py'),
+        ),
+        launch_arguments={
+        }.items()
     )
-    
-    # Create and return launch description
+
+    buraq_control_timer = TimerAction(period=5.0, actions=[include_buraq_control])
+
     return LaunchDescription([
-        description_launch,
-        control_launch
+        include_buraq_description,
+        buraq_control_timer,
     ])

@@ -1,17 +1,32 @@
 /**
  * @file motor.h
- * @brief Motor control interface with PID for the 4WD Mobile Robot
+ * @brief Motor control interface with custom PID for the 4WD Mobile Robot
  */
 
 #ifndef MOTOR_H
 #define MOTOR_H
 
 #include <Arduino.h>
-#include <PID_v1.h> // Using the PID library for control
+#include "custom_pid.h" // Using the custom PID implementation
 #include "config.h"
+
+// Define motor indices for the custom PID controller
+#define LEFT 0
+#define RIGHT 1
+#define LEFT2 2
+#define RIGHT2 3
+
+// Define maximum PWM value (for 10-bit resolution)
+#define MAX_PWM 1023
 
 // Forward declaration
 class EncoderManager;
+
+// Forward declaration of encoder reading function for custom PID
+long readEncoder(int motor);
+
+// Forward declaration of motor speed setting function for custom PID
+void setMotorSpeeds(long leftSpeed, long rightSpeed, long left2Speed, long right2Speed);
 
 class MotorController {
 private:
@@ -26,12 +41,17 @@ private:
     // Motor state
     double targetSpeeds[NUM_MOTORS]; // Target speed in ticks/s for closed loop or PWM for open loop
     double currentSpeeds[NUM_MOTORS]; // Current speed in ticks/s
-    double outputPwm[NUM_MOTORS];     // PWM output (0-255)
+    double outputPwm[NUM_MOTORS];     // PWM output (0-1023)
     bool closedLoopMode[NUM_MOTORS];  // Whether motor is in closed-loop control mode
     
-    // PID controllers
-    PID* pidControllers[NUM_MOTORS];
-    double pidKp, pidKi, pidKd, pidKo; // PID gains
+    // PID gains (used for both custom PID and direct calculation)
+    int pidKp, pidKi, pidKd, pidKo; // PID gains
+    
+    // Last encoder values (for direct PID calculation)
+    long lastEncoderValues[NUM_MOTORS];
+    
+    // Helper function to apply motor output
+    void applyMotorOutput(uint8_t motorIndex, long output);
     
 public:
     /**
@@ -53,7 +73,7 @@ public:
     /**
      * @brief Set motor speed in open-loop mode (direct PWM)
      * @param motorIndex Motor index (0-3)
-     * @param speed Speed value (-255 to 255), negative for reverse
+     * @param speed Speed value (-1023 to 1023), negative for reverse
      */
     void setOpenLoopSpeed(uint8_t motorIndex, double speed);
     
@@ -66,7 +86,7 @@ public:
     
     /**
      * @brief Set all motors to open-loop mode with specified speeds
-     * @param speeds Array of speed values (-255 to 255)
+     * @param speeds Array of speed values (-1023 to 1023)
      */
     void setAllOpenLoop(double speeds[NUM_MOTORS]);
     
@@ -89,7 +109,7 @@ public:
      * @param kd Derivative gain
      * @param ko Output coefficient
      */
-    void setPIDGains(double kp, double ki, double kd, double ko);
+    void setPIDGains(int kp, int ki, int kd, int ko);
     
     /**
      * @brief Get current PID gains
@@ -98,7 +118,7 @@ public:
      * @param kd Pointer to store derivative gain
      * @param ko Pointer to store output coefficient
      */
-    void getPIDGains(double* kp, double* ki, double* kd, double* ko);
+    void getPIDGains(int* kp, int* ki, int* kd, int* ko);
     
     /**
      * @brief Stop all motors
@@ -110,6 +130,16 @@ public:
      * @return String containing motor data
      */
     String getFormattedData();
+    
+    /**
+     * @brief Get encoder value for the custom PID controller
+     * @param motorIndex Motor index (0-3)
+     * @return Current encoder value
+     */
+    long getEncoderValue(uint8_t motorIndex);
 };
+
+// Global pointer to the motor controller for the custom PID implementation
+extern MotorController* g_motorController;
 
 #endif // MOTOR_H

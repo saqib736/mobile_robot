@@ -41,7 +41,7 @@
 #define IMU_SCL 19          // I2C SCL pin
 
 // Serial Communication
-#define SERIAL_BAUD_RATE 115200  // Baud rate for communication with ROS2
+#define SERIAL_BAUD_RATE 57600  // Baud rate for communication with ROS2
 
 // Motor Control Constants
 #define PWM_FREQUENCY 20000      // PWM frequency in Hz

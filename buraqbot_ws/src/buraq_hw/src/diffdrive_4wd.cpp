@@ -50,7 +50,7 @@ hardware_interface::CallbackReturn DiffDriveBuraq::on_init(
       " serial_device: %s, baud_rate: %d, timeout: %d"
       " front_left_enc_counts_per_rev: %d, front_right_enc_counts_per_rev: %d"
       " rear_left_enc_counts_per_rev: %d, rear_right_enc_counts_per_rev: %d"
-      " loop_rate: %f, pid_p: %d, pid_i: %d, pid_d: %d, pid_o: %d",
+      " loop_rate: %f, pid_p: %f, pid_i: %f, pid_d: %f, pid_o: %f",
       config_.front_left_wheel_name.c_str(), config_.front_right_wheel_name.c_str(),
       config_.rear_left_wheel_name.c_str(), config_.rear_right_wheel_name.c_str(),
       config_.serial_device.c_str(), config_.baud_rate, config_.timeout,
@@ -111,29 +111,29 @@ std::vector<hardware_interface::StateInterface> DiffDriveBuraq::export_state_int
   // Add IMU state interfaces
   // Orientation (quaternion)
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "orientation.x", &imu_orientation_[0]));
+      "imu", "orientation.x", &imu_orientation_[0]));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "orientation.y", &imu_orientation_[1]));
+      "imu", "orientation.y", &imu_orientation_[1]));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "orientation.z", &imu_orientation_[2]));
+      "imu", "orientation.z", &imu_orientation_[2]));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "orientation.w", &imu_orientation_[3]));
+      "imu", "orientation.w", &imu_orientation_[3]));
 
   // Angular velocity
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "angular_velocity.x", &imu_angular_velocity_[0]));
+      "imu", "angular_velocity.x", &imu_angular_velocity_[0]));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "angular_velocity.y", &imu_angular_velocity_[1]));
+      "imu", "angular_velocity.y", &imu_angular_velocity_[1]));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "angular_velocity.z", &imu_angular_velocity_[2]));
+      "imu", "angular_velocity.z", &imu_angular_velocity_[2]));
 
   // Linear acceleration
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "linear_acceleration.x", &imu_linear_acceleration_[0]));
+      "imu", "linear_acceleration.x", &imu_linear_acceleration_[0]));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "linear_acceleration.y", &imu_linear_acceleration_[1]));
+      "imu", "linear_acceleration.y", &imu_linear_acceleration_[1]));
   state_interfaces.emplace_back(hardware_interface::StateInterface(
-      "imu_sensor", "linear_acceleration.z", &imu_linear_acceleration_[2]));
+      "imu", "linear_acceleration.z", &imu_linear_acceleration_[2]));
 
   return state_interfaces;
 }
@@ -189,6 +189,11 @@ hardware_interface::CallbackReturn DiffDriveBuraq::on_activate(
   front_right_wheel_.vel_set_pt_ = 0.0;
   rear_left_wheel_.vel_set_pt_ = 0.0;
   rear_right_wheel_.vel_set_pt_ = 0.0;
+  
+   // Force motors to stop completely on activation
+  hw_driver_.SetMotorValues(0, 0, 0, 0);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));  // Short delay
+  hw_driver_.SetMotorValues(0, 0, 0, 0);  // Send stop command again
   
   RCLCPP_INFO(logger_, "DiffDriveBuraq hardware interface activated");
   return hardware_interface::CallbackReturn::SUCCESS;
@@ -268,16 +273,25 @@ hardware_interface::return_type DiffDriveBuraq::read(
 }
 
 hardware_interface::return_type DiffDriveBuraq::write(
-    const rclcpp::Time& /*time*/, const rclcpp::Duration& /*period*/) {
+    const rclcpp::Time& /* time */, const rclcpp::Duration& /* period */) {
+    
+  //RCLCPP_INFO(logger_, "RAW Velocity: FL=%f, FR=%f, RL=%f, RR=%f",
+  //              front_left_wheel_.vel_set_pt_, front_right_wheel_.vel_set_pt_, 
+  //              rear_left_wheel_.vel_set_pt_, rear_right_wheel_.vel_set_pt_);  
+    
   // Convert velocity commands from rad/s to ticks/s for all four wheels
-  int front_left_ticks_per_sec = static_cast<int>(front_left_wheel_.vel_set_pt_ / front_left_wheel_.rads_per_tick_ / config_.loop_rate);
-  int front_right_ticks_per_sec = static_cast<int>(front_right_wheel_.vel_set_pt_ / front_right_wheel_.rads_per_tick_ / config_.loop_rate);
-  int rear_left_ticks_per_sec = static_cast<int>(rear_left_wheel_.vel_set_pt_ / rear_left_wheel_.rads_per_tick_ / config_.loop_rate);
-  int rear_right_ticks_per_sec = static_cast<int>(rear_right_wheel_.vel_set_pt_ / rear_right_wheel_.rads_per_tick_ / config_.loop_rate);
+  int front_left_ticks_per_sec = static_cast<int>(front_left_wheel_.vel_set_pt_ / front_left_wheel_.rads_per_tick_);
+  int front_right_ticks_per_sec = static_cast<int>(front_right_wheel_.vel_set_pt_ / front_right_wheel_.rads_per_tick_);
+  int rear_left_ticks_per_sec = static_cast<int>(rear_left_wheel_.vel_set_pt_ / rear_left_wheel_.rads_per_tick_);
+  int rear_right_ticks_per_sec = static_cast<int>(rear_right_wheel_.vel_set_pt_ / rear_right_wheel_.rads_per_tick_);
   
+  //RCLCPP_INFO(logger_, "Sending commands: FL=%d, FR=%d, RL=%d, RR=%d",
+  //              front_left_ticks_per_sec, front_right_ticks_per_sec, 
+  //              rear_left_ticks_per_sec, rear_right_ticks_per_sec);
+                
   // Send commands to all four motors
-  // Order: Front left, Front right, Rear left, Rear right
-  hw_driver_.SetMotorValues(front_left_ticks_per_sec, front_right_ticks_per_sec, rear_left_ticks_per_sec, rear_right_ticks_per_sec);
+  hw_driver_.SetMotorValues(front_left_ticks_per_sec, front_right_ticks_per_sec, 
+                             rear_left_ticks_per_sec, rear_right_ticks_per_sec);
   
   return hardware_interface::return_type::OK;
 }

@@ -1,109 +1,135 @@
 /**
  * @file imu.cpp
  * @brief Implementation of the IMU class for MPU6050 with ROS2 compatibility
+ * @details Using ElectronicCats/mpu6050 library with DMP support
  */
 
 #include "imu.h"
-#include <math.h>
 
 bool IMU::init() {
-    Wire.begin();
-    Wire.setSCL(IMU_SCL);
-    Wire.setSDA(IMU_SDA);
+    // Initialize I2C communication
+    #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+        Wire.begin();
+        Wire.setSCL(IMU_SCL);
+        Wire.setSDA(IMU_SDA);
+        Wire.setClock(400000); // 400kHz I2C clock
+    #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
+        Fastwire::setup(400, true);
+    #endif
     
-    mpu.begin();
+    // Initialize MPU6050
+    Serial.println(F("Initializing I2C devices..."));
+    mpu.initialize();
     
-    // Perform a more thorough calibration
-    Serial.println("Calibrating gyroscope... Keep the robot still!");
-    mpu.calcGyroOffsets(true); // Calibrate gyroscope with output enabled
+    // Verify connection
+    Serial.println(F("Testing MPU6050 connection..."));
+    if (!mpu.testConnection()) {
+        Serial.println(F("MPU6050 connection failed"));
+        return false;
+    }
+    Serial.println(F("MPU6050 connection successful"));
     
-    // Set gyro and accel sensitivity
-    // MPU6050_tockn doesn't expose these directly, but they affect the internal calculations
+    // Initialize DMP
+    Serial.println(F("Initializing DMP..."));
+    devStatus = mpu.dmpInitialize();
     
-    // Initialize quaternion to identity [w=1, x=0, y=0, z=0]
-    quat[0] = 1.0f;
-    quat[1] = 0.0f;
-    quat[2] = 0.0f;
-    quat[3] = 0.0f;
+    // Supply your gyro offsets here, scaled for min sensitivity
+    // These can be calibrated later
+    mpu.setXGyroOffset(0);
+    mpu.setYGyroOffset(0);
+    mpu.setZGyroOffset(0);
+    mpu.setXAccelOffset(0);
+    mpu.setYAccelOffset(0);
+    mpu.setZAccelOffset(0);
     
-    // Initialize angles
-    angleX = 0.0f;
-    angleY = 0.0f;
-    angleZ = 0.0f;
-    
-    lastUpdateTime = millis();
-    return true;
+    // Make sure it worked (returns 0 if so)
+    if (devStatus == 0) {
+        // Calibration Time: generate offsets and calibrate our MPU6050
+        Serial.println(F("Calibrating accelerometer and gyroscope..."));
+        mpu.CalibrateAccel(6);
+        mpu.CalibrateGyro(6);
+        Serial.println(F("Calibration complete!"));
+        mpu.PrintActiveOffsets();
+        
+        // Turn on the DMP
+        Serial.println(F("Enabling DMP..."));
+        mpu.setDMPEnabled(true);
+        
+        // Get expected DMP packet size for later comparison
+        packetSize = mpu.dmpGetFIFOPacketSize();
+        dmpReady = true;
+        
+        // Initialize data values
+        accelX = accelY = accelZ = 0.0f;
+        gyroX = gyroY = gyroZ = 0.0f;
+        quatW = 1.0f;
+        quatX = quatY = quatZ = 0.0f;
+        roll = pitch = yaw = 0.0f;
+        temperature = 0.0f;
+        
+        Serial.println(F("DMP ready!"));
+        return true;
+    } else {
+        // ERROR!
+        // 1 = initial memory load failed
+        // 2 = DMP configuration updates failed
+        Serial.print(F("DMP Initialization failed (code "));
+        Serial.print(devStatus);
+        Serial.println(F(")"));
+        return false;
+    }
 }
 
 void IMU::update() {
-    // Calculate delta time for integration
-    unsigned long currentTime = millis();
-    float dt = (currentTime - lastUpdateTime) / 1000.0f; // Convert to seconds
-    lastUpdateTime = currentTime;
+    // If DMP initialization failed, don't try to do anything
+    if (!dmpReady) return;
     
-    // Skip first update or if dt is too large (indicates a long delay)
-    if (dt > 0.5f) {
-        dt = 0.01f; // Use a reasonable default
-    }
-    
-    // Update raw sensor readings
-    mpu.update();
-    
-    // Get acceleration values (in m/s²)
-    accelX = mpu.getAccX() * 9.81; // Convert g to m/s²
-    accelY = mpu.getAccY() * 9.81;
-    accelZ = mpu.getAccZ() * 9.81;
-    
-    // Get gyroscope values (in degrees/s) and convert to rad/s
-    gyroX = mpu.getGyroX() * DEG_TO_RAD;
-    gyroY = mpu.getGyroY() * DEG_TO_RAD;
-    gyroZ = mpu.getGyroZ() * DEG_TO_RAD;
-    
-    // Get calculated angles from the MPU6050_tockn library
-    // These use a complementary filter internally
-    float newAngleX = mpu.getAngleX();
-    float newAngleY = mpu.getAngleY();
-    float newAngleZ = mpu.getAngleZ();
-    
-    // Apply a low-pass filter to reduce noise in the angle readings
-    // Alpha determines how much weight to give to the new reading (0.1 = 10% new, 90% old)
-    float alpha = 0.2f;
-    angleX = angleX * (1.0f - alpha) + newAngleX * alpha;
-    angleY = angleY * (1.0f - alpha) + newAngleY * alpha;
-    angleZ = angleZ * (1.0f - alpha) + newAngleZ * alpha;
-    
-    // Convert Euler angles to quaternion
-    // Convert degrees to radians for quaternion calculation
-    float roll = angleX * DEG_TO_RAD;
-    float pitch = angleY * DEG_TO_RAD;
-    float yaw = angleZ * DEG_TO_RAD;
-    eulerToQuaternion(roll, pitch, yaw);
-    
-    lastUpdateTime = millis();
-}
-
-void IMU::eulerToQuaternion(float roll, float pitch, float yaw) {
-    // Calculate quaternion from Euler angles using the ZYX convention
-    float cy = cos(yaw * 0.5f);
-    float sy = sin(yaw * 0.5f);
-    float cp = cos(pitch * 0.5f);
-    float sp = sin(pitch * 0.5f);
-    float cr = cos(roll * 0.5f);
-    float sr = sin(roll * 0.5f);
-
-    // Quaternion: q = [w, x, y, z]
-    quat[0] = cr * cp * cy + sr * sp * sy; // w
-    quat[1] = sr * cp * cy - cr * sp * sy; // x
-    quat[2] = cr * sp * cy + sr * cp * sy; // y
-    quat[3] = cr * cp * sy - sr * sp * cy; // z
-    
-    // Normalize quaternion
-    float norm = sqrt(quat[0]*quat[0] + quat[1]*quat[1] + quat[2]*quat[2] + quat[3]*quat[3]);
-    if (norm > 0.0f) {
-        quat[0] /= norm;
-        quat[1] /= norm;
-        quat[2] /= norm;
-        quat[3] /= norm;
+    // Read a packet from FIFO
+    if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+        // Get quaternion
+        mpu.dmpGetQuaternion(&q, fifoBuffer);
+        quatW = q.w;
+        quatX = q.x;
+        quatY = q.y;
+        quatZ = q.z;
+        
+        // Get gravity vector
+        mpu.dmpGetGravity(&gravity, &q);
+        
+        // Get Euler angles (in radians)
+        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+        // Convert to degrees and store
+        yaw = ypr[0] * RAD_TO_DEG;
+        pitch = ypr[1] * RAD_TO_DEG;
+        roll = ypr[2] * RAD_TO_DEG;
+        
+        // Get accelerometer values (raw)
+        mpu.dmpGetAccel(&aa, fifoBuffer);
+        
+        // Convert to world frame and apply gravity compensation
+        mpu.dmpConvertToWorldFrame(&aaWorld, &aa, &q);
+        
+        // Convert to m/s² and store
+        accelX = aaWorld.x * mpu.get_acce_resolution() * EARTH_GRAVITY_MS2;
+        accelY = aaWorld.y * mpu.get_acce_resolution() * EARTH_GRAVITY_MS2;
+        accelZ = aaWorld.z * mpu.get_acce_resolution() * EARTH_GRAVITY_MS2;
+        
+        // Get gyroscope values (raw)
+        mpu.dmpGetGyro(&gg, fifoBuffer);
+        
+        // Convert to world frame
+        mpu.dmpConvertToWorldFrame(&ggWorld, &gg, &q);
+        
+        // Convert to rad/s and store
+        gyroX = ggWorld.x * mpu.get_gyro_resolution() * DEG_TO_RAD;
+        gyroY = ggWorld.y * mpu.get_gyro_resolution() * DEG_TO_RAD;
+        gyroZ = ggWorld.z * mpu.get_gyro_resolution() * DEG_TO_RAD;
+        
+        // Update temperature (not part of DMP, read separately)
+        temperature = mpu.getTemperature() / 340.0 + 36.53; // Formula from datasheet
+        
+        // Update timestamp
+        lastUpdateTime = millis();
     }
 }
 
@@ -119,24 +145,28 @@ void IMU::getAngularVelocity(float* gx, float* gy, float* gz) {
     *gz = gyroZ;
 }
 
-void IMU::getQuaternion(float q[4]) {
-    q[0] = quat[0]; // w
-    q[1] = quat[1]; // x
-    q[2] = quat[2]; // y
-    q[3] = quat[3]; // z
+void IMU::getQuaternion(float* qw, float* qx, float* qy, float* qz) {
+    *qw = quatW;
+    *qx = quatX;
+    *qy = quatY;
+    *qz = quatZ;
 }
 
-void IMU::getEulerAngles(float* roll, float* pitch, float* yaw) {
-    *roll = angleX;   // Roll (X)
-    *pitch = angleY;  // Pitch (Y)
-    *yaw = angleZ;    // Yaw (Z)
+void IMU::getEulerAngles(float* r, float* p, float* y) {
+    *r = roll;   // Roll
+    *p = pitch;  // Pitch
+    *y = yaw;    // Yaw
+}
+
+float IMU::getTemperature() {
+    return temperature;
 }
 
 String IMU::getFormattedData() {
     // Format for ROS2 compatibility:
     // qw:qx:qy:qz:gx:gy:gz:ax:ay:az
     // Quaternion, Angular velocity (rad/s), Linear acceleration (m/s²)
-    String data = String(quat[0]) + ":" + String(quat[1]) + ":" + String(quat[2]) + ":" + String(quat[3]) + ":" +
+    String data = String(quatW) + ":" + String(quatX) + ":" + String(quatY) + ":" + String(quatZ) + ":" +
                  String(gyroX) + ":" + String(gyroY) + ":" + String(gyroZ) + ":" +
                  String(accelX) + ":" + String(accelY) + ":" + String(accelZ);
     return data;

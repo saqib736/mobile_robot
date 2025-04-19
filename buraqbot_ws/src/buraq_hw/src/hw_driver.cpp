@@ -17,8 +17,29 @@ void HWDriver::Setup(const std::string& serial_device, int32_t baud_rate, int32_
     // Open serial port
     serial_port_.Open(serial_device);
     
+    LibSerial::BaudRate baudrate_enum;
+    switch(baud_rate) {
+      case 9600:
+        baudrate_enum = LibSerial::BaudRate::BAUD_9600;
+        break;
+      case 19200:
+        baudrate_enum = LibSerial::BaudRate::BAUD_19200;
+        break;
+      case 38400:
+        baudrate_enum = LibSerial::BaudRate::BAUD_38400;
+        break;
+      case 57600:
+        baudrate_enum = LibSerial::BaudRate::BAUD_57600;
+        break;
+      case 115200:
+        baudrate_enum = LibSerial::BaudRate::BAUD_115200;
+        break;
+      default:
+        throw std::runtime_error("Invalid baud rate");
+    }
+    
     // Set serial port parameters
-    serial_port_.SetBaudRate(LibSerial::BaudRate(baud_rate));
+    serial_port_.SetBaudRate(baudrate_enum);
     serial_port_.SetCharacterSize(LibSerial::CharacterSize::CHAR_SIZE_8);
     serial_port_.SetFlowControl(LibSerial::FlowControl::FLOW_CONTROL_NONE);
     serial_port_.SetParity(LibSerial::Parity::PARITY_NONE);
@@ -120,9 +141,14 @@ HWDriver::Encoders HWDriver::ReadEncoderValues() {
 }
 
 void HWDriver::SetMotorValues(int val_1, int val_2, int val_3, int val_4) {
-  // Format command for closed-loop control (m:val1:val2:val3:val4)
+  // Format command for closed-loop control
   std::stringstream cmd;
-  cmd << "m" << val_1 << ":" << val_2 << ":" << val_3 << ":" << val_4;
+  
+  if (val_1 == 0 && val_2 == 0 && val_3 == 0 && val_4 == 0) {
+    cmd << "o" << val_1 << ":" << val_2 << ":" << val_3 << ":" << val_4;
+  } else {
+    cmd << "m" << val_1 << ":" << val_2 << ":" << val_3 << ":" << val_4;
+  }
   
   // Send command to set motor values
   SendMsg(cmd.str());

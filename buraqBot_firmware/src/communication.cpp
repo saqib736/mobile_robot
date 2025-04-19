@@ -156,7 +156,7 @@ void Communication::parseCommand(char command, String params) {
         case COMMAND_SET_PID_GAINS: // 'u' - Set PID gains
             if (motorController != nullptr && params.length() > 0) {
                 // Parse PID gains: u<kp>:<ki>:<kd>:<ko>
-                double kp = 0.0, ki = 0.0, kd = 0.0, ko = 1.0;
+                float kp = 0.0, ki = 0.0, kd = 0.0, ko = 1.0;
                 int index1 = params.indexOf(':');
                 int index2 = params.indexOf(':', index1 + 1);
                 int index3 = params.indexOf(':', index2 + 1);
@@ -167,7 +167,13 @@ void Communication::parseCommand(char command, String params) {
                     kd = params.substring(index2 + 1, index3).toFloat();
                     ko = params.substring(index3 + 1).toFloat();
                     
-                    motorController->setPIDGains(kp, ki, kd, ko);
+                    // Convert floating point values to integer format for custom PID
+                    int kpInt = kp * 1000;
+                    int kiInt = ki * 1000;
+                    int kdInt = kd * 1000;
+                    int koInt = ko;
+                    
+                    motorController->setPIDGains(kpInt, kiInt, kdInt, koInt);
                     sendResponse(command, "OK");
                 } else {
                     sendError("Invalid PID parameters format");

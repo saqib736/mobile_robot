@@ -1,4 +1,4 @@
-<library path="diffdrive_buraq">
+<library path="buraq_hw">
 
   <class name="buraq_hw/DiffDriveBuraq" type="buraq_hw::DiffDriveBuraq" base_class_type="hardware_interface::SystemInterface">
     <description>

@@ -8,9 +8,7 @@
 
 #include <Arduino.h>
 #include "config.h"
-
-// Include the Encoder library
-#include "../.pio/libdeps/teensy41/Encoder/Encoder.h"
+#include <Encoder.h>
 
 class EncoderManager {
 private:
